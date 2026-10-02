@@ -1,0 +1,15 @@
+{
+  "id": "embervault.troubleshooter",
+  "name": "Troubleshooter",
+  "version": "0.1.0",
+  "publisher": "EmberVault",
+  "minimum_core_version": "1.0.0",
+  "capabilities": ["diagnostics.scan", "diagnostics.report"],
+  "feature_state": "experimental",
+  "process_mode": "embedded",
+  "entrypoint": "src/module.py",
+  "contract_version": 1,
+  "safety": {"read_only": true, "requires_backup": false, "allowed_profiles": ["default", "research"]},
+  "recovery": {"rollback": "No repair is performed by the diagnostic module.", "verification": "Diagnostic output is evidence only and does not change workspace state."},
+  "operation_types": ["troubleshooter-scan", "troubleshooter-report"]
+}
