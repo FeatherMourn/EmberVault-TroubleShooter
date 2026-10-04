@@ -11,6 +11,8 @@ class TroubleshooterTests(unittest.TestCase):
         self.assertEqual(result.status, "ready")
         self.assertEqual(result.data["attention_count"], 1)
         self.assertFalse(result.data["mutates_workspace"])
+        self.assertEqual(result.data["recovery"]["backup_required"], False)
+        self.assertEqual(result.data["evidence"][0]["state"], "observed")
 
     def test_invalid_finding_is_blocked(self):
         result = scan(ModuleContext("embervault.troubleshooter", "default", "EV-OP-2"), [{}])
