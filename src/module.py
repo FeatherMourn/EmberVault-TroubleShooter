@@ -8,7 +8,7 @@ from cryptography.fernet import Fernet, InvalidToken
 
 MODULE_ID = "embervault.troubleshooter"
 ALLOWED_SEVERITIES = {"info", "attention", "critical"}
-ALLOWED_STATUSES = {"observed", "blocked", "unsupported"}
+ALLOWED_STATUSES = {"observed", "blocked", "missing", "unsupported", "unverified"}
 
 
 def describe() -> dict:
