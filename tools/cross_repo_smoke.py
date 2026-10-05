@@ -25,7 +25,7 @@ def main() -> None:
     root = Path(__file__).resolve().parents[1]
     sys.path.insert(0, str(root))
     adapter = load_module("control_center_history_adapter", args.control_center / "core" / "troubleshooter_history_adapter.py")
-    from src.module import EncryptedReportHistory
+    from src.module import EncryptedReportHistory, review_recovery_evidence
     from src.runtime import handle_history_request
 
     with tempfile.TemporaryDirectory() as temp:
@@ -40,6 +40,14 @@ def main() -> None:
         )
         assert result.status == "ready"
         assert result.data["action"] == "save"
+        recovery = review_recovery_evidence(ModuleContext("embervault.troubleshooter", "default", "EV-CROSS-RECOVERY"), {
+            "schema_version": 1, "operation_id": "recovery-ci", "validated": True, "mutated_files": False,
+            "compatibility": "supported", "sources": {
+                "source_backup": {"state": "ready"}, "current_state_backup": {"state": "ready"},
+                "restored_target": {"state": "ready"},
+            },
+        })
+        assert recovery.status == "ready" and recovery.data["rollback_ready"] is True
         print("cross-repository history smoke test passed")
 
 

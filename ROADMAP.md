@@ -22,11 +22,12 @@
 - Approved save, clear, and delete execution is bounded to the encrypted diagnostic report store.
 - Packaged runtime requests resolve key references through an injected provider and never accept raw keys.
 - Save Manager recovery evidence is classified for backup readiness, compatibility, rollback readiness, and mutation boundaries.
+- Cross-repository smoke coverage verifies a ready Save Manager recovery fixture and rollback classification.
 
 ## Next slices
 
 1. Connect Control Center approval results to the packaged runtime request contract.
-2. Add cross-repository Save Manager recovery-evidence contract tests.
+2. Add recovery health comparison over time and evidence-retention integration.
 2. Persist and export sanitized reports without retaining private game contents.
 3. Add richer Save Manager recovery, compatibility, and backup-evidence diagnostics.
 4. Add Control Center package and module inventory checks.
