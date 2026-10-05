@@ -18,6 +18,28 @@ class TroubleshooterTests(unittest.TestCase):
         result = scan(ModuleContext("embervault.troubleshooter", "default", "EV-OP-2"), [{}])
         self.assertEqual(result.status, "blocked")
 
+    def test_summary_is_deterministic_and_sorted(self):
+        result = scan(ModuleContext("embervault.troubleshooter", "default", "EV-OP-3"), [
+            {"id": "z", "title": "Critical issue", "severity": "critical", "status": "blocked"},
+            {"id": "a", "title": "Informational note", "severity": "info"},
+        ])
+        self.assertEqual(result.data["schema_version"], 1)
+        self.assertEqual([item["id"] for item in result.data["findings"]], ["z", "a"])
+        self.assertEqual(result.data["severity_counts"]["critical"], 1)
+        self.assertEqual(result.data["status_counts"]["blocked"], 1)
+
+    def test_mutation_instruction_is_blocked(self):
+        result = scan(ModuleContext("embervault.troubleshooter", "default", "EV-OP-4"), [
+            {"title": "Repair requested", "severity": "critical", "action": "delete file"},
+        ])
+        self.assertEqual(result.status, "blocked")
+
+    def test_unknown_severity_is_blocked(self):
+        result = scan(ModuleContext("embervault.troubleshooter", "default", "EV-OP-5"), [
+            {"title": "Unknown", "severity": "warning"},
+        ])
+        self.assertEqual(result.status, "blocked")
+
 
 if __name__ == "__main__":
     unittest.main()
