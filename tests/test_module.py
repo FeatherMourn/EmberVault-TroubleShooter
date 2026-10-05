@@ -131,6 +131,34 @@ class TroubleshooterTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 wrong.load()
 
+    def test_encrypted_report_history_delete_removes_persisted_reports(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "reports.enc"
+            key = Fernet.generate_key()
+            history = EncryptedReportHistory(path, key)
+            history.add(export_report(scan(ModuleContext("embervault.troubleshooter", "default", "EV-OP-DELETE"),
+                                          [{"id": "one", "title": "One", "severity": "info"}])))
+            history.save()
+            history.delete()
+            self.assertFalse(path.exists())
+            self.assertEqual(history.list(), [])
+
+    def test_encrypted_report_history_ignores_interrupted_temp_file(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "reports.enc"
+            path.with_name("reports.enc.tmp").write_bytes(b"incomplete")
+            history = EncryptedReportHistory(path, Fernet.generate_key())
+            history.load()
+            self.assertEqual(history.list(), [])
+
+    def test_encrypted_report_history_rejects_corrupt_payload(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "reports.enc"
+            key = Fernet.generate_key()
+            path.write_bytes(b"corrupt")
+            with self.assertRaises(ValueError):
+                EncryptedReportHistory(path, key).load()
+
     def test_module_health_check_accepts_read_only_manifest(self):
         result = check_module_health(ModuleContext("embervault.troubleshooter", "default", "EV-OP-9"), {
             "id": "embervault.save-manager", "name": "Save Manager", "version": "0.1.0",

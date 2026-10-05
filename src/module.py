@@ -110,7 +110,9 @@ class EncryptedReportHistory(ReportHistory):
     def save(self) -> None:
         payload = json.dumps(self.list(), sort_keys=True, separators=(",", ":")).encode("utf-8")
         self._path.parent.mkdir(parents=True, exist_ok=True)
-        self._path.write_bytes(self._cipher.encrypt(payload))
+        temporary = self._path.with_name(self._path.name + ".tmp")
+        temporary.write_bytes(self._cipher.encrypt(payload))
+        temporary.replace(self._path)
 
     def load(self) -> None:
         if not self._path.is_file():
@@ -124,6 +126,19 @@ class EncryptedReportHistory(ReportHistory):
         self._reports.clear()
         for report in reports:
             self.add(report)
+
+    def delete(self) -> None:
+        """Delete the encrypted history file and clear in-memory reports."""
+        self._reports.clear()
+        try:
+            self._path.unlink()
+        except FileNotFoundError:
+            pass
+
+    def clear(self) -> None:
+        """Clear all reports and persist an empty encrypted history."""
+        self._reports.clear()
+        self.save()
 
 
 def check_module_health(context: ModuleContext, manifest: dict) -> ModuleResult:

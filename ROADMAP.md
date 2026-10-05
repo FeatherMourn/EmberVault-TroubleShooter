@@ -18,10 +18,11 @@
 - Read-only report comparison identifies added, resolved, changed, and unchanged findings.
 - Bounded in-memory history retains sanitized report summaries and supports latest comparison.
 - Optional encrypted local history persists sanitized summaries with explicit key ownership and verification.
+- Encrypted history supports atomic writes, explicit deletion, empty-history reset, and corruption handling.
 
 ## Next slices
 
-1. Add retention, deletion, and recovery controls for encrypted report history.
+1. Add Control Center integration for user-approved report-history lifecycle actions.
 2. Persist and export sanitized reports without retaining private game contents.
 3. Add richer Save Manager recovery, compatibility, and backup-evidence diagnostics.
 4. Add Control Center package and module inventory checks.
