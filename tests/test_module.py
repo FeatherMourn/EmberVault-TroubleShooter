@@ -1,7 +1,10 @@
 import unittest
 
 from embervault_sdk import ModuleContext
-from src.module import ReportHistory, check_module_health, check_package_health, compare_reports, export_report, review_evidence_gaps, scan, scan_evidence
+from cryptography.fernet import Fernet
+from src.module import EncryptedReportHistory, ReportHistory, check_module_health, check_package_health, compare_reports, export_report, review_evidence_gaps, scan, scan_evidence
+import tempfile
+from pathlib import Path
 
 
 class TroubleshooterTests(unittest.TestCase):
@@ -105,6 +108,28 @@ class TroubleshooterTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             history.add({"report_version": 1, "data": {"findings": []},
                          "read_only": False, "mutates_workspace": True})
+
+    def test_encrypted_report_history_round_trips_sanitized_reports(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "reports.enc"
+            key = Fernet.generate_key()
+            context = ModuleContext("embervault.troubleshooter", "default", "EV-OP-ENCRYPTED")
+            history = EncryptedReportHistory(path, key, limit=2)
+            history.add(export_report(scan(context, [{"id": "one", "title": "One", "severity": "info"}])))
+            history.save()
+            self.assertTrue(path.is_file())
+            restored = EncryptedReportHistory(path, key, limit=2)
+            restored.load()
+            self.assertEqual(restored.list()[0]["data"]["findings"][0]["id"], "one")
+
+    def test_encrypted_report_history_rejects_wrong_key(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "reports.enc"
+            first = EncryptedReportHistory(path, Fernet.generate_key())
+            first.save()
+            wrong = EncryptedReportHistory(path, Fernet.generate_key())
+            with self.assertRaises(ValueError):
+                wrong.load()
 
     def test_module_health_check_accepts_read_only_manifest(self):
         result = check_module_health(ModuleContext("embervault.troubleshooter", "default", "EV-OP-9"), {

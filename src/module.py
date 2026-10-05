@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from embervault_sdk import ModuleContext, ModuleResult
 from copy import deepcopy
+import json
+from pathlib import Path
+from cryptography.fernet import Fernet, InvalidToken
 
 MODULE_ID = "embervault.troubleshooter"
 ALLOWED_SEVERITIES = {"info", "attention", "critical"}
@@ -89,6 +92,38 @@ class ReportHistory:
         if len(self._reports) < 2:
             raise ValueError("At least two reports are required for comparison.")
         return compare_reports(self._reports[-2], self._reports[-1])
+
+
+class EncryptedReportHistory(ReportHistory):
+    """Optional encrypted local store for sanitized diagnostic reports."""
+
+    def __init__(self, path: str | Path, key: bytes, limit: int = 10):
+        super().__init__(limit)
+        if not isinstance(key, bytes) or not key:
+            raise ValueError("An explicit encryption key is required.")
+        self._path = Path(path)
+        try:
+            self._cipher = Fernet(key)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("The encryption key is invalid.") from exc
+
+    def save(self) -> None:
+        payload = json.dumps(self.list(), sort_keys=True, separators=(",", ":")).encode("utf-8")
+        self._path.parent.mkdir(parents=True, exist_ok=True)
+        self._path.write_bytes(self._cipher.encrypt(payload))
+
+    def load(self) -> None:
+        if not self._path.is_file():
+            return
+        try:
+            reports = json.loads(self._cipher.decrypt(self._path.read_bytes()).decode("utf-8"))
+        except (InvalidToken, OSError, ValueError, json.JSONDecodeError) as exc:
+            raise ValueError("Encrypted report history could not be verified.") from exc
+        if not isinstance(reports, list):
+            raise ValueError("Encrypted report history is invalid.")
+        self._reports.clear()
+        for report in reports:
+            self.add(report)
 
 
 def check_module_health(context: ModuleContext, manifest: dict) -> ModuleResult:

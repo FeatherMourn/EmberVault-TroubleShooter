@@ -7,5 +7,6 @@ name = "embervault-troubleshooter"
 version = "0.1.0"
 requires-python = ">=3.11"
 dependencies = [
-  "embervault-module-sdk @ git+https://github.com/FeatherMourn/EmberVault-Module-SDK.git"
+  "embervault-module-sdk @ git+https://github.com/FeatherMourn/EmberVault-Module-SDK.git",
+  "cryptography>=43"
 ]
