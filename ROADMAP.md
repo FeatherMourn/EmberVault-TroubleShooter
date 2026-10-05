@@ -25,10 +25,12 @@
 - Cross-repository smoke coverage verifies a ready Save Manager recovery fixture and rollback classification.
 - Recovery reviews can be compared over time for readiness changes and gap resolution.
 - Multi-point recovery trends report readiness transitions and recurring gaps from sanitized reviews.
+- A display-safe review view model exposes findings and recovery trends with no operational controls.
 
 ## Next slices
 
 1. Connect Control Center approval results to the packaged runtime request contract.
+2. Add a thin Control Center read-only review surface over this view model.
 2. Add encrypted retention integration for recovery reviews and historical trend reporting.
 2. Persist and export sanitized reports without retaining private game contents.
 3. Add richer Save Manager recovery, compatibility, and backup-evidence diagnostics.

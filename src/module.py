@@ -288,6 +288,25 @@ def recovery_health_trend(reviews: list[dict]) -> dict:
             "recurring_gaps": recurring, "read_only": True, "mutates_workspace": False}
 
 
+def build_review_view(report: dict, recovery_trend: dict | None = None) -> dict:
+    """Prepare display-safe diagnostic data; no operational controls are returned."""
+    if not isinstance(report, dict) or report.get("report_version") != 1:
+        raise ValueError("Review view requires a version-one report.")
+    data = report.get("data")
+    if not isinstance(data, dict) or not isinstance(data.get("findings"), list):
+        raise ValueError("Review view requires sanitized findings.")
+    view = {"view_version": 1, "title": "Troubleshooter Review", "read_only": True,
+            "mutates_workspace": False, "finding_count": len(data["findings"]),
+            "findings": data["findings"], "controls": [],
+            "recovery": None, "errors": []}
+    if recovery_trend is not None:
+        if not isinstance(recovery_trend, dict) or recovery_trend.get("trend_version") != 1:
+            raise ValueError("Review view requires a version-one recovery trend.")
+        view["recovery"] = {key: recovery_trend.get(key) for key in
+                             ("review_count", "rollback_ready_count", "rollback_transitions", "recurring_gaps")}
+    return view
+
+
 def check_package_health(context: ModuleContext, package: dict) -> ModuleResult:
     """Validate package metadata supplied by an owning module or Control Center."""
     if context.module_id != MODULE_ID:

@@ -3,7 +3,7 @@ import unittest
 from embervault_sdk import ModuleContext
 from cryptography.fernet import Fernet
 from src.runtime import handle_history_request
-from src.module import EncryptedReportHistory, ReportHistory, check_module_health, check_package_health, compare_recovery_health, compare_reports, execute_history_action, export_report, recovery_health_trend, review_evidence_gaps, review_recovery_evidence, scan, scan_evidence
+from src.module import EncryptedReportHistory, ReportHistory, build_review_view, check_module_health, check_package_health, compare_recovery_health, compare_reports, execute_history_action, export_report, recovery_health_trend, review_evidence_gaps, review_recovery_evidence, scan, scan_evidence
 import tempfile
 from pathlib import Path
 
@@ -268,6 +268,18 @@ class TroubleshooterTests(unittest.TestCase):
         self.assertEqual(trend["rollback_transitions"], 2)
         self.assertEqual(trend["recurring_gaps"], ["backup"])
         self.assertTrue(trend["read_only"])
+
+    def test_review_view_exposes_findings_and_recovery_without_actions(self):
+        report = export_report(scan(ModuleContext("embervault.troubleshooter", "default", "EV-OP-VIEW"), [
+            {"id": "one", "title": "One", "severity": "info"},
+        ]))
+        view = build_review_view(report, {"trend_version": 1, "review_count": 2,
+                                          "rollback_ready_count": 1, "rollback_transitions": 1,
+                                          "recurring_gaps": ["backup"]})
+        self.assertTrue(view["read_only"])
+        self.assertEqual(view["finding_count"], 1)
+        self.assertEqual(view["recovery"]["recurring_gaps"], ["backup"])
+        self.assertEqual(view["controls"], [])
 
     def test_package_health_check_accepts_version_one_metadata(self):
         result = check_package_health(ModuleContext("embervault.troubleshooter", "default", "EV-OP-12"), {
