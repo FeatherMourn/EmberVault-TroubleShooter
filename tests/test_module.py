@@ -1,7 +1,7 @@
 import unittest
 
 from embervault_sdk import ModuleContext
-from src.module import check_module_health, check_package_health, compare_reports, export_report, review_evidence_gaps, scan, scan_evidence
+from src.module import ReportHistory, check_module_health, check_package_health, compare_reports, export_report, review_evidence_gaps, scan, scan_evidence
 
 
 class TroubleshooterTests(unittest.TestCase):
@@ -87,6 +87,24 @@ class TroubleshooterTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             compare_reports({"report_version": 2, "data": {"findings": []}},
                             {"report_version": 1, "data": {"findings": []}})
+
+    def test_report_history_is_bounded_and_returns_copies(self):
+        history = ReportHistory(limit=2)
+        context = ModuleContext("embervault.troubleshooter", "default", "EV-OP-HISTORY")
+        for title in ("one", "two", "three"):
+            history.add(export_report(scan(context, [{"id": title, "title": title, "severity": "info"}])))
+        reports = history.list()
+        self.assertEqual(len(reports), 2)
+        self.assertEqual(reports[0]["data"]["findings"][0]["id"], "two")
+        reports[0]["data"]["findings"].clear()
+        self.assertEqual(len(history.list()[0]["data"]["findings"]), 1)
+        self.assertEqual(history.compare_latest()["added"], ["three"])
+
+    def test_report_history_rejects_non_read_only_report(self):
+        history = ReportHistory()
+        with self.assertRaises(ValueError):
+            history.add({"report_version": 1, "data": {"findings": []},
+                         "read_only": False, "mutates_workspace": True})
 
     def test_module_health_check_accepts_read_only_manifest(self):
         result = check_module_health(ModuleContext("embervault.troubleshooter", "default", "EV-OP-9"), {

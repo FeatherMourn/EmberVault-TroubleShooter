@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from embervault_sdk import ModuleContext, ModuleResult
+from copy import deepcopy
 
 MODULE_ID = "embervault.troubleshooter"
 ALLOWED_SEVERITIES = {"info", "attention", "critical"}
@@ -56,6 +57,38 @@ def compare_reports(previous: dict, current: dict) -> dict:
             "unchanged": unchanged, "counts": {"added": len(added), "resolved": len(resolved),
             "changed": len(changed), "unchanged": len(unchanged)}, "read_only": True,
             "mutates_workspace": False}
+
+
+class ReportHistory:
+    """Bounded in-memory history for sanitized diagnostic reports."""
+
+    def __init__(self, limit: int = 10):
+        if not isinstance(limit, int) or isinstance(limit, bool) or limit < 1:
+            raise ValueError("Report history limit must be a positive integer.")
+        self._limit = limit
+        self._reports: list[dict] = []
+
+    def add(self, report: dict) -> None:
+        if not isinstance(report, dict) or report.get("report_version") != 1:
+            raise ValueError("Only version-one reports can be retained.")
+        if report.get("read_only") is not True or report.get("mutates_workspace") is not False:
+            raise ValueError("Only explicitly read-only reports can be retained.")
+        data = report.get("data")
+        if not isinstance(data, dict) or not isinstance(data.get("findings"), list):
+            raise ValueError("Reports must contain sanitized findings.")
+        sanitized = {"report_version": 1, "status": report.get("status"), "message": str(report.get("message", "")),
+                     "data": {"findings": deepcopy(data["findings"]), "finding_count": len(data["findings"])},
+                     "read_only": True, "mutates_workspace": False}
+        self._reports.append(sanitized)
+        self._reports[:] = self._reports[-self._limit:]
+
+    def list(self) -> list[dict]:
+        return deepcopy(self._reports)
+
+    def compare_latest(self) -> dict:
+        if len(self._reports) < 2:
+            raise ValueError("At least two reports are required for comparison.")
+        return compare_reports(self._reports[-2], self._reports[-1])
 
 
 def check_module_health(context: ModuleContext, manifest: dict) -> ModuleResult:
