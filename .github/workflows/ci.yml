@@ -16,3 +16,16 @@ jobs:
         run: python -m pip install "git+https://github.com/FeatherMourn/EmberVault-Module-SDK.git"
       - name: Run Troubleshooter tests
         run: python -m unittest -v tests/test_module.py
+      - name: Check Control Center evidence compatibility
+        uses: actions/checkout@v4
+        with:
+          repository: FeatherMourn/EmberVault-Control-Center
+          path: control-center
+      - name: Validate embedded Control Center contract
+        run: >-
+          python -c "import importlib.util; from embervault_sdk import ModuleContext;
+          p='control-center/modules/troubleshooter/module.py'; s=importlib.util.spec_from_file_location('cc_troubleshooter',p);
+          m=importlib.util.module_from_spec(s); s.loader.exec_module(m);
+          r=m.scan_evidence(ModuleContext('embervault.troubleshooter','research','CI-CROSS-REPO'),
+          {'contract_version':1,'producer':'control-center','operation':'troubleshooter-scan','findings':[{'title':'CI','severity':'info'}]});
+          assert r.status == 'ready' and r.data['evidence_contract']['contract_version'] == 1"

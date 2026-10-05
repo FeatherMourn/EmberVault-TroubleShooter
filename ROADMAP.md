@@ -12,6 +12,7 @@
 - Evidence gaps are surfaced explicitly as missing, unsupported, blocked, or unverified.
 - Package metadata can be health-checked without installation or mutation.
 - Repository CI runs the full Troubleshooter test file on pushes and pull requests.
+- CI checks the embedded Control Center Troubleshooter contract against the version-one evidence payload.
 
 ## Next slices
 
