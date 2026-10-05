@@ -2,6 +2,7 @@ import unittest
 
 from embervault_sdk import ModuleContext
 from cryptography.fernet import Fernet
+from src.runtime import handle_history_request
 from src.module import EncryptedReportHistory, ReportHistory, check_module_health, check_package_health, compare_reports, execute_history_action, export_report, review_evidence_gaps, scan, scan_evidence
 import tempfile
 from pathlib import Path
@@ -168,6 +169,23 @@ class TroubleshooterTests(unittest.TestCase):
             ready = execute_history_action(context, history, "save", True)
             self.assertEqual(ready.status, "ready")
             self.assertEqual(ready.data["target"], "encrypted-diagnostic-report-store")
+
+    def test_packaged_runtime_resolves_key_by_reference_only(self):
+        with tempfile.TemporaryDirectory() as temp:
+            key = Fernet.generate_key()
+            context = ModuleContext("embervault.troubleshooter", "default", "EV-OP-RUNTIME")
+            result = handle_history_request(context, {
+                "contract_version": 1, "action": "save", "approved": True,
+                "store_path": str(Path(temp) / "reports.enc"), "key_reference": "profile-key",
+            }, EncryptedReportHistory, lambda reference: key if reference == "profile-key" else (_ for _ in ()).throw(KeyError(reference)))
+            self.assertEqual(result.status, "ready")
+
+    def test_packaged_runtime_rejects_missing_key_reference(self):
+        context = ModuleContext("embervault.troubleshooter", "default", "EV-OP-RUNTIME-2")
+        result = handle_history_request(context, {
+            "contract_version": 1, "action": "save", "approved": True, "store_path": "reports.enc",
+        }, EncryptedReportHistory, lambda _: Fernet.generate_key())
+        self.assertEqual(result.status, "blocked")
 
     def test_module_health_check_accepts_read_only_manifest(self):
         result = check_module_health(ModuleContext("embervault.troubleshooter", "default", "EV-OP-9"), {
