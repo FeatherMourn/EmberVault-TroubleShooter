@@ -187,6 +187,15 @@ class TroubleshooterTests(unittest.TestCase):
         }, EncryptedReportHistory, lambda _: Fernet.generate_key())
         self.assertEqual(result.status, "blocked")
 
+    def test_packaged_runtime_handles_read_only_recovery_trend(self):
+        context = ModuleContext("embervault.troubleshooter", "default", "EV-OP-TREND")
+        result = handle_history_request(context, {
+            "contract_version": 1, "operation": "recovery-trend", "read_only": True,
+            "reviews": [{"recovery_schema_version": 1, "rollback_ready": True, "findings": []}],
+        }, EncryptedReportHistory, lambda _: Fernet.generate_key())
+        self.assertEqual(result.status, "ready")
+        self.assertEqual(result.data["review_count"], 1)
+
     def test_module_health_check_accepts_read_only_manifest(self):
         result = check_module_health(ModuleContext("embervault.troubleshooter", "default", "EV-OP-9"), {
             "id": "embervault.save-manager", "name": "Save Manager", "version": "0.1.0",
