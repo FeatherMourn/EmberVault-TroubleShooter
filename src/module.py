@@ -39,6 +39,25 @@ def export_report(result: ModuleResult) -> dict:
             "export_boundary": "diagnostic-evidence-only"}
 
 
+def compare_reports(previous: dict, current: dict) -> dict:
+    """Compare two sanitized reports without storing or altering either report."""
+    for report in (previous, current):
+        if not isinstance(report, dict) or report.get("report_version") != 1:
+            raise ValueError("Report comparison requires version-one reports.")
+        if not isinstance(report.get("data"), dict) or not isinstance(report["data"].get("findings"), list):
+            raise ValueError("Reports must contain a findings list.")
+    before = {str(item.get("id")): item for item in previous["data"]["findings"] if isinstance(item, dict) and item.get("id")}
+    after = {str(item.get("id")): item for item in current["data"]["findings"] if isinstance(item, dict) and item.get("id")}
+    added = sorted(set(after) - set(before))
+    resolved = sorted(set(before) - set(after))
+    changed = sorted(key for key in set(before) & set(after) if before[key] != after[key])
+    unchanged = sorted(key for key in set(before) & set(after) if before[key] == after[key])
+    return {"comparison_version": 1, "added": added, "resolved": resolved, "changed": changed,
+            "unchanged": unchanged, "counts": {"added": len(added), "resolved": len(resolved),
+            "changed": len(changed), "unchanged": len(unchanged)}, "read_only": True,
+            "mutates_workspace": False}
+
+
 def check_module_health(context: ModuleContext, manifest: dict) -> ModuleResult:
     """Validate a supplied module manifest without loading or changing the module."""
     if context.module_id != MODULE_ID:

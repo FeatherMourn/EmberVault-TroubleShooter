@@ -15,10 +15,11 @@
 - Package dependency metadata is checked for shape and duplicates without resolution or installation.
 - Repository CI runs the full Troubleshooter test file on pushes and pull requests.
 - CI checks the embedded Control Center Troubleshooter contract against the version-one evidence payload.
+- Read-only report comparison identifies added, resolved, changed, and unchanged findings.
 
 ## Next slices
 
-1. Add read-only report history and deterministic comparison between diagnostic scans.
+1. Add report history retention with explicit privacy and recovery rules.
 2. Persist and export sanitized reports without retaining private game contents.
 3. Add richer Save Manager recovery, compatibility, and backup-evidence diagnostics.
 4. Add Control Center package and module inventory checks.

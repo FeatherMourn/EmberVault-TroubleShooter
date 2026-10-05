@@ -1,7 +1,7 @@
 import unittest
 
 from embervault_sdk import ModuleContext
-from src.module import check_module_health, check_package_health, export_report, review_evidence_gaps, scan, scan_evidence
+from src.module import check_module_health, check_package_health, compare_reports, export_report, review_evidence_gaps, scan, scan_evidence
 
 
 class TroubleshooterTests(unittest.TestCase):
@@ -64,6 +64,29 @@ class TroubleshooterTests(unittest.TestCase):
         self.assertTrue(report["read_only"])
         self.assertFalse(report["mutates_workspace"])
         self.assertEqual(report["export_boundary"], "diagnostic-evidence-only")
+
+    def test_report_comparison_identifies_added_resolved_changed_and_unchanged(self):
+        before = export_report(scan(ModuleContext("embervault.troubleshooter", "default", "EV-OP-C1"), [
+            {"id": "same", "title": "Same", "severity": "info"},
+            {"id": "changed", "title": "Old", "severity": "attention"},
+            {"id": "resolved", "title": "Resolved", "severity": "critical"},
+        ]))
+        after = export_report(scan(ModuleContext("embervault.troubleshooter", "default", "EV-OP-C2"), [
+            {"id": "same", "title": "Same", "severity": "info"},
+            {"id": "changed", "title": "New", "severity": "attention"},
+            {"id": "added", "title": "Added", "severity": "info"},
+        ]))
+        comparison = compare_reports(before, after)
+        self.assertEqual(comparison["added"], ["added"])
+        self.assertEqual(comparison["resolved"], ["resolved"])
+        self.assertEqual(comparison["changed"], ["changed"])
+        self.assertEqual(comparison["unchanged"], ["same"])
+        self.assertTrue(comparison["read_only"])
+
+    def test_report_comparison_rejects_unknown_version(self):
+        with self.assertRaises(ValueError):
+            compare_reports({"report_version": 2, "data": {"findings": []}},
+                            {"report_version": 1, "data": {"findings": []}})
 
     def test_module_health_check_accepts_read_only_manifest(self):
         result = check_module_health(ModuleContext("embervault.troubleshooter", "default", "EV-OP-9"), {
