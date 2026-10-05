@@ -3,7 +3,7 @@ import unittest
 from embervault_sdk import ModuleContext
 from cryptography.fernet import Fernet
 from src.runtime import handle_history_request
-from src.module import EncryptedReportHistory, ReportHistory, check_module_health, check_package_health, compare_recovery_health, compare_reports, execute_history_action, export_report, review_evidence_gaps, review_recovery_evidence, scan, scan_evidence
+from src.module import EncryptedReportHistory, ReportHistory, check_module_health, check_package_health, compare_recovery_health, compare_reports, execute_history_action, export_report, recovery_health_trend, review_evidence_gaps, review_recovery_evidence, scan, scan_evidence
 import tempfile
 from pathlib import Path
 
@@ -248,6 +248,17 @@ class TroubleshooterTests(unittest.TestCase):
         self.assertTrue(comparison["rollback_ready_after"])
         self.assertEqual(comparison["new_gaps"], ["compatibility"])
         self.assertEqual(comparison["resolved_gaps"], ["backup"])
+
+    def test_recovery_health_trend_reports_recurring_gaps_and_transitions(self):
+        trend = recovery_health_trend([
+            {"recovery_schema_version": 1, "rollback_ready": False, "findings": [{"id": "backup"}]},
+            {"recovery_schema_version": 1, "rollback_ready": True, "findings": [{"id": "backup"}, {"id": "compatibility"}]},
+            {"recovery_schema_version": 1, "rollback_ready": False, "findings": [{"id": "backup"}]},
+        ])
+        self.assertEqual(trend["review_count"], 3)
+        self.assertEqual(trend["rollback_transitions"], 2)
+        self.assertEqual(trend["recurring_gaps"], ["backup"])
+        self.assertTrue(trend["read_only"])
 
     def test_package_health_check_accepts_version_one_metadata(self):
         result = check_package_health(ModuleContext("embervault.troubleshooter", "default", "EV-OP-12"), {

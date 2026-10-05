@@ -266,6 +266,28 @@ def compare_recovery_health(previous: dict, current: dict) -> dict:
             "read_only": True, "mutates_workspace": False}
 
 
+def recovery_health_trend(reviews: list[dict]) -> dict:
+    """Summarize a sequence of sanitized recovery reviews."""
+    if not isinstance(reviews, list) or not reviews:
+        raise ValueError("At least one recovery review is required.")
+    for review in reviews:
+        if not isinstance(review, dict) or review.get("recovery_schema_version") != 1:
+            raise ValueError("Recovery trend requires version-one reviews.")
+    gap_counts: dict[str, int] = {}
+    transitions = 0
+    for index, review in enumerate(reviews):
+        for finding in review.get("findings", []):
+            if isinstance(finding, dict) and finding.get("id"):
+                gap_counts[str(finding["id"])] = gap_counts.get(str(finding["id"]), 0) + 1
+        if index and bool(reviews[index - 1].get("rollback_ready")) != bool(review.get("rollback_ready")):
+            transitions += 1
+    recurring = sorted(item for item, count in gap_counts.items() if count > 1)
+    return {"trend_version": 1, "review_count": len(reviews),
+            "rollback_ready_count": sum(bool(review.get("rollback_ready")) for review in reviews),
+            "rollback_transitions": transitions, "gap_occurrences": dict(sorted(gap_counts.items())),
+            "recurring_gaps": recurring, "read_only": True, "mutates_workspace": False}
+
+
 def check_package_health(context: ModuleContext, package: dict) -> ModuleResult:
     """Validate package metadata supplied by an owning module or Control Center."""
     if context.module_id != MODULE_ID:

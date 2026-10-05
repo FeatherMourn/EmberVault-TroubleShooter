@@ -24,11 +24,12 @@
 - Save Manager recovery evidence is classified for backup readiness, compatibility, rollback readiness, and mutation boundaries.
 - Cross-repository smoke coverage verifies a ready Save Manager recovery fixture and rollback classification.
 - Recovery reviews can be compared over time for readiness changes and gap resolution.
+- Multi-point recovery trends report readiness transitions and recurring gaps from sanitized reviews.
 
 ## Next slices
 
 1. Connect Control Center approval results to the packaged runtime request contract.
-2. Add recovery-health retention integration and historical trend reporting.
+2. Add encrypted retention integration for recovery reviews and historical trend reporting.
 2. Persist and export sanitized reports without retaining private game contents.
 3. Add richer Save Manager recovery, compatibility, and backup-evidence diagnostics.
 4. Add Control Center package and module inventory checks.
