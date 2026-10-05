@@ -2,7 +2,7 @@ import unittest
 
 from embervault_sdk import ModuleContext
 from cryptography.fernet import Fernet
-from src.module import EncryptedReportHistory, ReportHistory, check_module_health, check_package_health, compare_reports, export_report, review_evidence_gaps, scan, scan_evidence
+from src.module import EncryptedReportHistory, ReportHistory, check_module_health, check_package_health, compare_reports, execute_history_action, export_report, review_evidence_gaps, scan, scan_evidence
 import tempfile
 from pathlib import Path
 
@@ -158,6 +158,16 @@ class TroubleshooterTests(unittest.TestCase):
             path.write_bytes(b"corrupt")
             with self.assertRaises(ValueError):
                 EncryptedReportHistory(path, key).load()
+
+    def test_history_execution_requires_approval_and_targets_store_only(self):
+        with tempfile.TemporaryDirectory() as temp:
+            history = EncryptedReportHistory(Path(temp) / "reports.enc", Fernet.generate_key())
+            context = ModuleContext("embervault.troubleshooter", "default", "EV-OP-EXECUTE")
+            blocked = execute_history_action(context, history, "save", False)
+            self.assertEqual(blocked.status, "blocked")
+            ready = execute_history_action(context, history, "save", True)
+            self.assertEqual(ready.status, "ready")
+            self.assertEqual(ready.data["target"], "encrypted-diagnostic-report-store")
 
     def test_module_health_check_accepts_read_only_manifest(self):
         result = check_module_health(ModuleContext("embervault.troubleshooter", "default", "EV-OP-9"), {

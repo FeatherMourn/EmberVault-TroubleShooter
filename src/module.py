@@ -141,6 +141,27 @@ class EncryptedReportHistory(ReportHistory):
         self.save()
 
 
+def execute_history_action(context: ModuleContext, history: EncryptedReportHistory,
+                           action: str, approved: bool) -> ModuleResult:
+    """Execute an explicitly approved report-store action only."""
+    if context.module_id != MODULE_ID:
+        return ModuleResult("blocked", "Troubleshooter received an invalid module context.")
+    if not isinstance(history, EncryptedReportHistory) or action not in {"save", "clear", "delete"}:
+        return ModuleResult("blocked", "Unsupported report-history action or store.")
+    if approved is not True:
+        return ModuleResult("blocked", "Report-history execution requires explicit approval.")
+    if action == "save":
+        history.save()
+    elif action == "clear":
+        history.clear()
+    else:
+        history.delete()
+    return ModuleResult("ready", "Approved report-history action completed.", {
+        "action": action, "approved": True, "read_only": True,
+        "mutates_workspace": False, "target": "encrypted-diagnostic-report-store",
+    })
+
+
 def check_module_health(context: ModuleContext, manifest: dict) -> ModuleResult:
     """Validate a supplied module manifest without loading or changing the module."""
     if context.module_id != MODULE_ID:
