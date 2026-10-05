@@ -248,6 +248,24 @@ def review_recovery_evidence(context: ModuleContext, evidence: dict) -> ModuleRe
     return ModuleResult("ready", "Recovery evidence review completed.", data)
 
 
+def compare_recovery_health(previous: dict, current: dict) -> dict:
+    """Compare two recovery reviews without retaining source paths or save contents."""
+    for review in (previous, current):
+        if not isinstance(review, dict) or review.get("recovery_schema_version") != 1:
+            raise ValueError("Recovery comparison requires version-one reviews.")
+        if not isinstance(review.get("findings"), list):
+            raise ValueError("Recovery reviews must contain findings.")
+    before = {str(item.get("id")): item for item in previous["findings"] if isinstance(item, dict) and item.get("id")}
+    after = {str(item.get("id")): item for item in current["findings"] if isinstance(item, dict) and item.get("id")}
+    return {"comparison_version": 1,
+            "rollback_ready_changed": previous.get("rollback_ready") != current.get("rollback_ready"),
+            "rollback_ready_before": bool(previous.get("rollback_ready")),
+            "rollback_ready_after": bool(current.get("rollback_ready")),
+            "new_gaps": sorted(set(after) - set(before)),
+            "resolved_gaps": sorted(set(before) - set(after)),
+            "read_only": True, "mutates_workspace": False}
+
+
 def check_package_health(context: ModuleContext, package: dict) -> ModuleResult:
     """Validate package metadata supplied by an owning module or Control Center."""
     if context.module_id != MODULE_ID:
