@@ -215,6 +215,39 @@ def review_evidence_gaps(context: ModuleContext, evidence: dict) -> ModuleResult
     })
 
 
+def review_recovery_evidence(context: ModuleContext, evidence: dict) -> ModuleResult:
+    """Classify Save Manager recovery evidence without inspecting save contents."""
+    if context.module_id != MODULE_ID:
+        return ModuleResult("blocked", "Troubleshooter received an invalid module context.")
+    if not isinstance(evidence, dict) or evidence.get("schema_version") != 1:
+        return ModuleResult("blocked", "Recovery evidence requires schema version 1.")
+    sources = evidence.get("sources")
+    if not isinstance(sources, dict) or not sources:
+        return ModuleResult("blocked", "Recovery evidence requires named source reports.")
+    findings = []
+    for name in ("source_backup", "current_state_backup", "restored_target"):
+        report = sources.get(name)
+        if not isinstance(report, dict):
+            findings.append({"id": name, "title": f"Missing {name}", "severity": "critical", "status": "missing"})
+        elif report.get("state") != "ready":
+            findings.append({"id": name, "title": f"{name} is not ready", "severity": "critical", "status": "blocked"})
+    if evidence.get("validated") is not True:
+        findings.append({"id": "recovery-validation", "title": "Recovery validation incomplete", "severity": "critical", "status": "unverified"})
+    if evidence.get("mutated_files") is not False:
+        findings.append({"id": "mutation-boundary", "title": "Recovery mutation boundary is not confirmed", "severity": "critical", "status": "unsupported"})
+    compatibility = evidence.get("compatibility")
+    if compatibility is not None and compatibility not in {"supported", "unknown", "unsupported"}:
+        return ModuleResult("blocked", "Recovery compatibility state is unsupported.")
+    if compatibility in {"unknown", "unsupported"}:
+        findings.append({"id": "compatibility", "title": "Recovery compatibility is not confirmed", "severity": "attention", "status": "unsupported"})
+    result = scan(context, findings)
+    data = dict(result.data) if result.status == "ready" else {}
+    data.update({"recovery_schema_version": 1, "operation_id": str(evidence.get("operation_id", "unspecified")),
+                 "rollback_ready": not findings and evidence.get("validated") is True,
+                 "read_only": True, "mutates_workspace": False})
+    return ModuleResult("ready", "Recovery evidence review completed.", data)
+
+
 def check_package_health(context: ModuleContext, package: dict) -> ModuleResult:
     """Validate package metadata supplied by an owning module or Control Center."""
     if context.module_id != MODULE_ID:

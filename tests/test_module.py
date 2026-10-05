@@ -3,7 +3,7 @@ import unittest
 from embervault_sdk import ModuleContext
 from cryptography.fernet import Fernet
 from src.runtime import handle_history_request
-from src.module import EncryptedReportHistory, ReportHistory, check_module_health, check_package_health, compare_reports, execute_history_action, export_report, review_evidence_gaps, scan, scan_evidence
+from src.module import EncryptedReportHistory, ReportHistory, check_module_health, check_package_health, compare_reports, execute_history_action, export_report, review_evidence_gaps, review_recovery_evidence, scan, scan_evidence
 import tempfile
 from pathlib import Path
 
@@ -214,6 +214,29 @@ class TroubleshooterTests(unittest.TestCase):
         self.assertEqual(result.data["gap_count"], 1)
         self.assertEqual(result.data["gaps"][0]["id"], "runtime")
         self.assertIn("approved offline or runtime validation", result.data["gaps"][0]["guidance"])
+
+    def test_recovery_evidence_reports_backup_and_compatibility_gaps(self):
+        result = review_recovery_evidence(ModuleContext("embervault.troubleshooter", "default", "EV-OP-RECOVERY"), {
+            "schema_version": 1, "operation_id": "recovery-1", "validated": False, "mutated_files": False,
+            "compatibility": "unknown", "sources": {
+                "source_backup": {"state": "ready"}, "current_state_backup": {"state": "blocked"},
+                "restored_target": {"state": "ready"},
+            },
+        })
+        self.assertEqual(result.status, "ready")
+        self.assertFalse(result.data["rollback_ready"])
+        self.assertGreaterEqual(result.data["finding_count"], 2)
+
+    def test_recovery_evidence_ready_fixture_is_rollback_ready(self):
+        result = review_recovery_evidence(ModuleContext("embervault.troubleshooter", "default", "EV-OP-RECOVERY-2"), {
+            "schema_version": 1, "operation_id": "recovery-2", "validated": True, "mutated_files": False,
+            "compatibility": "supported", "sources": {
+                "source_backup": {"state": "ready"}, "current_state_backup": {"state": "ready"},
+                "restored_target": {"state": "ready"},
+            },
+        })
+        self.assertEqual(result.status, "ready")
+        self.assertTrue(result.data["rollback_ready"])
 
     def test_package_health_check_accepts_version_one_metadata(self):
         result = check_package_health(ModuleContext("embervault.troubleshooter", "default", "EV-OP-12"), {
