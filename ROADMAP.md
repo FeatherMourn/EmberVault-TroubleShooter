@@ -8,11 +8,12 @@
 - Evidence and recovery boundaries explicitly state that output is informational only.
 - Version-one evidence intake accepts producer-tagged findings from Save Manager and other owning modules.
 - Sanitized report export preserves the read-only boundary.
+- Supplied module manifests can be health-checked without loading or changing modules.
 
 ## Next slices
 
 1. Accept validated diagnostics from Control Center through the same versioned evidence contract.
-2. Add package/module health checks and evidence-gap review.
+2. Add evidence-gap review and package health checks.
 3. Add deterministic severity, evidence-gap, and recovery-risk review workflows.
 4. Add integration tests for SDK manifests, Content Creator handoff, and shared CI.
 

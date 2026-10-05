@@ -1,7 +1,7 @@
 import unittest
 
 from embervault_sdk import ModuleContext
-from src.module import export_report, scan, scan_evidence
+from src.module import check_module_health, export_report, scan, scan_evidence
 
 
 class TroubleshooterTests(unittest.TestCase):
@@ -64,6 +64,21 @@ class TroubleshooterTests(unittest.TestCase):
         self.assertTrue(report["read_only"])
         self.assertFalse(report["mutates_workspace"])
         self.assertEqual(report["export_boundary"], "diagnostic-evidence-only")
+
+    def test_module_health_check_accepts_read_only_manifest(self):
+        result = check_module_health(ModuleContext("embervault.troubleshooter", "default", "EV-OP-9"), {
+            "id": "embervault.save-manager", "name": "Save Manager", "version": "0.1.0",
+            "contract_version": 1, "safety": {"read_only": True}, "operation_types": ["save-inspection"],
+        })
+        self.assertEqual(result.status, "ready")
+        self.assertEqual(result.data["checks"]["read_only"], "passed")
+
+    def test_module_health_check_rejects_mutating_manifest(self):
+        result = check_module_health(ModuleContext("embervault.troubleshooter", "default", "EV-OP-10"), {
+            "id": "embervault.mod-manager", "name": "Mod Manager", "version": "0.1.0",
+            "contract_version": 1, "safety": {"read_only": False}, "operation_types": ["mod-install"],
+        })
+        self.assertEqual(result.status, "blocked")
 
 
 if __name__ == "__main__":

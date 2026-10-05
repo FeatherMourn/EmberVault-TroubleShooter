@@ -39,6 +39,28 @@ def export_report(result: ModuleResult) -> dict:
             "export_boundary": "diagnostic-evidence-only"}
 
 
+def check_module_health(context: ModuleContext, manifest: dict) -> ModuleResult:
+    """Validate a supplied module manifest without loading or changing the module."""
+    if context.module_id != MODULE_ID:
+        return ModuleResult("blocked", "Troubleshooter received an invalid module context.")
+    if not isinstance(manifest, dict):
+        return ModuleResult("blocked", "A module manifest object is required.")
+    required = ("id", "name", "version", "contract_version", "safety", "operation_types")
+    missing = [key for key in required if key not in manifest]
+    if missing:
+        return ModuleResult("blocked", "Module manifest is missing required fields.", {"missing": missing})
+    safety = manifest["safety"]
+    if manifest["contract_version"] != 1 or not isinstance(safety, dict) or safety.get("read_only") is not True:
+        return ModuleResult("blocked", "Module manifest does not meet the read-only version-one boundary.")
+    if not isinstance(manifest["operation_types"], list) or not manifest["operation_types"]:
+        return ModuleResult("blocked", "Module manifest must declare operation types.")
+    return ModuleResult("ready", "Read-only module health check completed.", {
+        "module": {"id": str(manifest["id"]), "name": str(manifest["name"]), "version": str(manifest["version"])},
+        "contract_version": 1, "read_only": True, "mutates_workspace": False,
+        "checks": {"required_fields": "passed", "contract_version": "passed", "read_only": "passed", "operation_types": "passed"},
+    })
+
+
 def scan(context: ModuleContext, findings: list[dict]) -> ModuleResult:
     if context.module_id != MODULE_ID:
         return ModuleResult("blocked", "Troubleshooter received an invalid module context.")
