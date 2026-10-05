@@ -91,17 +91,27 @@ class TroubleshooterTests(unittest.TestCase):
         self.assertEqual(result.status, "ready")
         self.assertEqual(result.data["gap_count"], 1)
         self.assertEqual(result.data["gaps"][0]["id"], "runtime")
+        self.assertIn("approved offline or runtime validation", result.data["gaps"][0]["guidance"])
 
     def test_package_health_check_accepts_version_one_metadata(self):
         result = check_package_health(ModuleContext("embervault.troubleshooter", "default", "EV-OP-12"), {
             "id": "embervault.sample", "name": "Sample", "version": "1.0.0", "manifest_version": 1,
+            "dependencies": ["embervault.sdk"],
         })
         self.assertEqual(result.status, "ready")
         self.assertEqual(result.data["checks"]["manifest_version"], "passed")
+        self.assertEqual(result.data["dependencies"], ["embervault.sdk"])
 
     def test_package_health_check_rejects_unknown_manifest(self):
         result = check_package_health(ModuleContext("embervault.troubleshooter", "default", "EV-OP-13"), {
             "id": "embervault.sample", "name": "Sample", "version": "1.0.0", "manifest_version": 2,
+        })
+        self.assertEqual(result.status, "blocked")
+
+    def test_package_health_check_rejects_duplicate_dependencies(self):
+        result = check_package_health(ModuleContext("embervault.troubleshooter", "default", "EV-OP-14"), {
+            "id": "embervault.sample", "name": "Sample", "version": "1.0.0", "manifest_version": 1,
+            "dependencies": ["embervault.sdk", "embervault.sdk"],
         })
         self.assertEqual(result.status, "blocked")
 

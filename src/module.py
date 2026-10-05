@@ -76,8 +76,15 @@ def review_evidence_gaps(context: ModuleContext, evidence: dict) -> ModuleResult
             return ModuleResult("blocked", "Every evidence entry requires an id.")
         state = str(record.get("state", "missing")).lower()
         if state in {"missing", "unsupported", "blocked", "unverified"}:
+            guidance = {
+                "missing": "Collect the required evidence from the owning module.",
+                "unsupported": "Review the capability boundary before relying on this result.",
+                "blocked": "Resolve the safety or contract prerequisite in the owning module.",
+                "unverified": "Run an approved offline or runtime validation before promotion.",
+            }[state]
             gaps.append({"id": str(record["id"]), "state": state,
-                         "summary": str(record.get("summary", "Evidence requires review."))})
+                         "summary": str(record.get("summary", "Evidence requires review.")),
+                         "guidance": guidance})
     gaps.sort(key=lambda item: (item["state"], item["id"]))
     return ModuleResult("ready", "Evidence-gap review completed.", {
         "contract_version": 1, "gap_count": len(gaps), "gaps": gaps,
@@ -97,9 +104,15 @@ def check_package_health(context: ModuleContext, package: dict) -> ModuleResult:
         return ModuleResult("blocked", "Package metadata is incomplete.", {"missing": missing})
     if package.get("manifest_version") != 1:
         return ModuleResult("blocked", "Package manifest version is unsupported.")
+    dependencies = package.get("dependencies", [])
+    if not isinstance(dependencies, list) or any(not isinstance(item, str) or not item.strip() for item in dependencies):
+        return ModuleResult("blocked", "Package dependencies must be a list of names.")
+    if len(set(dependencies)) != len(dependencies):
+        return ModuleResult("blocked", "Package dependencies must not contain duplicates.")
     return ModuleResult("ready", "Read-only package health check completed.", {
         "package": {key: str(package[key]) for key in ("id", "name", "version")},
-        "manifest_version": 1, "checks": {"identity": "passed", "manifest_version": "passed"},
+        "manifest_version": 1, "dependencies": sorted(dependencies),
+        "checks": {"identity": "passed", "manifest_version": "passed", "dependencies": "passed"},
         "read_only": True, "mutates_workspace": False,
     })
 

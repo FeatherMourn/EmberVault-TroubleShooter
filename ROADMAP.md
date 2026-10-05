@@ -11,6 +11,8 @@
 - Supplied module manifests can be health-checked without loading or changing modules.
 - Evidence gaps are surfaced explicitly as missing, unsupported, blocked, or unverified.
 - Package metadata can be health-checked without installation or mutation.
+- Evidence-gap results include bounded follow-up guidance without promoting unsupported claims.
+- Package dependency metadata is checked for shape and duplicates without resolution or installation.
 - Repository CI runs the full Troubleshooter test file on pushes and pull requests.
 - CI checks the embedded Control Center Troubleshooter contract against the version-one evidence payload.
 
