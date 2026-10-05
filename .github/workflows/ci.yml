@@ -29,3 +29,5 @@ jobs:
           r=m.scan_evidence(ModuleContext('embervault.troubleshooter','research','CI-CROSS-REPO'),
           {'contract_version':1,'producer':'control-center','operation':'troubleshooter-scan','findings':[{'title':'CI','severity':'info'}]});
           assert r.status == 'ready' and r.data['evidence_contract']['contract_version'] == 1"
+      - name: Run cross-repository history smoke test
+        run: python tools/cross_repo_smoke.py control-center
