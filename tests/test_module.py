@@ -1,7 +1,7 @@
 import unittest
 
 from embervault_sdk import ModuleContext
-from src.module import scan
+from src.module import export_report, scan, scan_evidence
 
 
 class TroubleshooterTests(unittest.TestCase):
@@ -39,6 +39,31 @@ class TroubleshooterTests(unittest.TestCase):
             {"title": "Unknown", "severity": "warning"},
         ])
         self.assertEqual(result.status, "blocked")
+
+    def test_save_manager_evidence_contract_is_accepted(self):
+        result = scan_evidence(ModuleContext("embervault.troubleshooter", "default", "EV-OP-6"), {
+            "contract_version": 1, "producer": "embervault.save-manager", "operation": "save-inspection",
+            "findings": [{"id": "save-1", "title": "Save inspection ready", "severity": "info"}],
+        })
+        self.assertEqual(result.status, "ready")
+        self.assertEqual(result.data["evidence_contract"]["producer"], "embervault.save-manager")
+        self.assertEqual(result.data["source_operation"], "save-inspection")
+
+    def test_unknown_evidence_contract_is_blocked(self):
+        result = scan_evidence(ModuleContext("embervault.troubleshooter", "default", "EV-OP-7"), {
+            "contract_version": 2, "producer": "embervault.save-manager", "findings": [],
+        })
+        self.assertEqual(result.status, "blocked")
+
+    def test_report_export_is_sanitized_and_read_only(self):
+        result = scan(ModuleContext("embervault.troubleshooter", "default", "EV-OP-8"), [
+            {"title": "No issue", "severity": "info"},
+        ])
+        report = export_report(result)
+        self.assertEqual(report["report_version"], 1)
+        self.assertTrue(report["read_only"])
+        self.assertFalse(report["mutates_workspace"])
+        self.assertEqual(report["export_boundary"], "diagnostic-evidence-only")
 
 
 if __name__ == "__main__":

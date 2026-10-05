@@ -11,6 +11,34 @@ def describe() -> dict:
     return {"id": MODULE_ID, "execution": "embedded", "application_state": "read-only", "mutates_workspace": False}
 
 
+def scan_evidence(context: ModuleContext, evidence: dict) -> ModuleResult:
+    """Summarize version-one evidence supplied by an owning module."""
+    if context.module_id != MODULE_ID:
+        return ModuleResult("blocked", "Troubleshooter received an invalid module context.")
+    if not isinstance(evidence, dict) or evidence.get("contract_version") != 1:
+        return ModuleResult("blocked", "Diagnostic evidence requires contract version 1.")
+    producer = evidence.get("producer")
+    findings = evidence.get("findings")
+    if not isinstance(producer, str) or not producer.strip() or not isinstance(findings, list):
+        return ModuleResult("blocked", "Diagnostic evidence requires a producer and findings list.")
+    result = scan(context, findings)
+    if result.status != "ready":
+        return result
+    data = dict(result.data)
+    data["evidence_contract"] = {"contract_version": 1, "producer": producer.strip()}
+    data["source_operation"] = str(evidence.get("operation", "unspecified"))
+    return ModuleResult("ready", "Version-one diagnostic evidence summarized.", data)
+
+
+def export_report(result: ModuleResult) -> dict:
+    """Create a sanitized, read-only report payload from a diagnostic result."""
+    if not isinstance(result, ModuleResult) or result.status != "ready" or not isinstance(result.data, dict):
+        raise ValueError("Only a ready diagnostic result can be exported.")
+    return {"report_version": 1, "status": result.status, "message": result.message,
+            "data": result.data, "read_only": True, "mutates_workspace": False,
+            "export_boundary": "diagnostic-evidence-only"}
+
+
 def scan(context: ModuleContext, findings: list[dict]) -> ModuleResult:
     if context.module_id != MODULE_ID:
         return ModuleResult("blocked", "Troubleshooter received an invalid module context.")
