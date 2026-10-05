@@ -9,6 +9,8 @@
 - Version-one evidence intake accepts producer-tagged findings from Save Manager and other owning modules.
 - Sanitized report export preserves the read-only boundary.
 - Supplied module manifests can be health-checked without loading or changing modules.
+- Evidence gaps are surfaced explicitly as missing, unsupported, blocked, or unverified.
+- Package metadata can be health-checked without installation or mutation.
 
 ## Next slices
 

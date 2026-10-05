@@ -61,6 +61,49 @@ def check_module_health(context: ModuleContext, manifest: dict) -> ModuleResult:
     })
 
 
+def review_evidence_gaps(context: ModuleContext, evidence: dict) -> ModuleResult:
+    """Report missing or unsupported evidence without inferring runtime behavior."""
+    if context.module_id != MODULE_ID:
+        return ModuleResult("blocked", "Troubleshooter received an invalid module context.")
+    if not isinstance(evidence, dict) or evidence.get("contract_version") != 1:
+        return ModuleResult("blocked", "Evidence-gap review requires contract version 1.")
+    records = evidence.get("evidence")
+    if not isinstance(records, list):
+        return ModuleResult("blocked", "Evidence-gap review requires an evidence list.")
+    gaps = []
+    for index, record in enumerate(records, 1):
+        if not isinstance(record, dict) or not record.get("id"):
+            return ModuleResult("blocked", "Every evidence entry requires an id.")
+        state = str(record.get("state", "missing")).lower()
+        if state in {"missing", "unsupported", "blocked", "unverified"}:
+            gaps.append({"id": str(record["id"]), "state": state,
+                         "summary": str(record.get("summary", "Evidence requires review."))})
+    gaps.sort(key=lambda item: (item["state"], item["id"]))
+    return ModuleResult("ready", "Evidence-gap review completed.", {
+        "contract_version": 1, "gap_count": len(gaps), "gaps": gaps,
+        "read_only": True, "mutates_workspace": False,
+    })
+
+
+def check_package_health(context: ModuleContext, package: dict) -> ModuleResult:
+    """Validate package metadata supplied by an owning module or Control Center."""
+    if context.module_id != MODULE_ID:
+        return ModuleResult("blocked", "Troubleshooter received an invalid module context.")
+    if not isinstance(package, dict):
+        return ModuleResult("blocked", "A package metadata object is required.")
+    required = ("id", "name", "version", "manifest_version")
+    missing = [key for key in required if not package.get(key)]
+    if missing:
+        return ModuleResult("blocked", "Package metadata is incomplete.", {"missing": missing})
+    if package.get("manifest_version") != 1:
+        return ModuleResult("blocked", "Package manifest version is unsupported.")
+    return ModuleResult("ready", "Read-only package health check completed.", {
+        "package": {key: str(package[key]) for key in ("id", "name", "version")},
+        "manifest_version": 1, "checks": {"identity": "passed", "manifest_version": "passed"},
+        "read_only": True, "mutates_workspace": False,
+    })
+
+
 def scan(context: ModuleContext, findings: list[dict]) -> ModuleResult:
     if context.module_id != MODULE_ID:
         return ModuleResult("blocked", "Troubleshooter received an invalid module context.")

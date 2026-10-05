@@ -1,7 +1,7 @@
 import unittest
 
 from embervault_sdk import ModuleContext
-from src.module import check_module_health, export_report, scan, scan_evidence
+from src.module import check_module_health, check_package_health, export_report, review_evidence_gaps, scan, scan_evidence
 
 
 class TroubleshooterTests(unittest.TestCase):
@@ -77,6 +77,31 @@ class TroubleshooterTests(unittest.TestCase):
         result = check_module_health(ModuleContext("embervault.troubleshooter", "default", "EV-OP-10"), {
             "id": "embervault.mod-manager", "name": "Mod Manager", "version": "0.1.0",
             "contract_version": 1, "safety": {"read_only": False}, "operation_types": ["mod-install"],
+        })
+        self.assertEqual(result.status, "blocked")
+
+    def test_evidence_gap_review_reports_unverified_entries(self):
+        result = review_evidence_gaps(ModuleContext("embervault.troubleshooter", "default", "EV-OP-11"), {
+            "contract_version": 1,
+            "evidence": [
+                {"id": "verified", "state": "observed", "summary": "Synthetic check passed."},
+                {"id": "runtime", "state": "unverified", "summary": "No runtime test performed."},
+            ],
+        })
+        self.assertEqual(result.status, "ready")
+        self.assertEqual(result.data["gap_count"], 1)
+        self.assertEqual(result.data["gaps"][0]["id"], "runtime")
+
+    def test_package_health_check_accepts_version_one_metadata(self):
+        result = check_package_health(ModuleContext("embervault.troubleshooter", "default", "EV-OP-12"), {
+            "id": "embervault.sample", "name": "Sample", "version": "1.0.0", "manifest_version": 1,
+        })
+        self.assertEqual(result.status, "ready")
+        self.assertEqual(result.data["checks"]["manifest_version"], "passed")
+
+    def test_package_health_check_rejects_unknown_manifest(self):
+        result = check_package_health(ModuleContext("embervault.troubleshooter", "default", "EV-OP-13"), {
+            "id": "embervault.sample", "name": "Sample", "version": "1.0.0", "manifest_version": 2,
         })
         self.assertEqual(result.status, "blocked")
 
