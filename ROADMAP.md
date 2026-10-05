@@ -18,10 +18,13 @@
 
 ## Next slices
 
-1. Accept validated diagnostics from Control Center through the same versioned evidence contract.
-2. Add evidence-gap review and package health checks.
-3. Add deterministic severity, evidence-gap, and recovery-risk review workflows.
-4. Add integration tests for SDK manifests, Content Creator handoff, and shared CI.
+1. Add read-only report history and deterministic comparison between diagnostic scans.
+2. Persist and export sanitized reports without retaining private game contents.
+3. Add richer Save Manager recovery, compatibility, and backup-evidence diagnostics.
+4. Add Control Center package and module inventory checks.
+5. Add evidence retention, contradiction review, and recovery-risk workflows.
+6. Expand cross-repository CI for SDK, Control Center, Save Manager, and Troubleshooter contracts.
+7. Build a read-only Troubleshooter interface for scan review and report comparison.
 
 ## Boundaries
 
