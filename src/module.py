@@ -34,6 +34,29 @@ def scan_evidence(context: ModuleContext, evidence: dict) -> ModuleResult:
     return ModuleResult("ready", "Version-one diagnostic evidence summarized.", data)
 
 
+def review_mod_manager_failure(context: ModuleContext, evidence: dict) -> ModuleResult:
+    """Convert synthetic Mod Manager recovery evidence into diagnostics only."""
+    if not isinstance(evidence, dict) or evidence.get("contract_version") != 1:
+        return ModuleResult("blocked", "Mod Manager evidence requires contract version 1.")
+    if evidence.get("producer") != "embervault.mod-research":
+        return ModuleResult("blocked", "Mod Manager evidence has an unsupported producer.")
+    failure = str(evidence.get("failure", "unknown"))
+    issues = evidence.get("issues", [])
+    if not isinstance(issues, list):
+        return ModuleResult("blocked", "Mod Manager evidence requires an issues list.")
+    findings = [{"id": f"mod-manager-{failure}", "title": f"Mod Manager update {failure}",
+                 "severity": "critical" if failure in {"missing-file", "rollback-failed"} else "attention",
+                 "status": "blocked" if evidence.get("state") == "blocked" else "unverified",
+                 "message": "; ".join(str(issue) for issue in issues) or "Synthetic update failure requires review."}]
+    result = scan(context, findings)
+    data = dict(result.data or {})
+    data.update({"evidence_contract": {"contract_version": 1, "producer": evidence["producer"]},
+                 "source_operation": "synthetic-mod-update-recovery", "failure": failure,
+                 "recovery_evidence": evidence.get("recovery_evidence", {}),
+                 "approval_required": bool(evidence.get("requires_control_center_approval", True))})
+    return ModuleResult("ready", "Mod Manager failure evidence reviewed read-only.", data)
+
+
 def export_report(result: ModuleResult) -> dict:
     """Create a sanitized, read-only report payload from a diagnostic result."""
     if not isinstance(result, ModuleResult) or result.status != "ready" or not isinstance(result.data, dict):

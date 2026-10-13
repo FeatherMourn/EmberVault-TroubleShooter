@@ -3,7 +3,7 @@ import unittest
 from embervault_sdk import ModuleContext
 from cryptography.fernet import Fernet
 from src.runtime import handle_history_request
-from src.module import EncryptedReportHistory, ReportHistory, build_review_view, check_module_health, check_package_health, compare_recovery_health, compare_reports, execute_history_action, export_report, recovery_health_trend, review_evidence_gaps, review_recovery_evidence, scan, scan_evidence
+from src.module import EncryptedReportHistory, ReportHistory, build_review_view, check_module_health, check_package_health, compare_recovery_health, compare_reports, execute_history_action, export_report, recovery_health_trend, review_evidence_gaps, review_recovery_evidence, review_mod_manager_failure, scan, scan_evidence
 import tempfile
 from pathlib import Path
 
@@ -56,6 +56,24 @@ class TroubleshooterTests(unittest.TestCase):
     def test_unknown_evidence_contract_is_blocked(self):
         result = scan_evidence(ModuleContext("embervault.troubleshooter", "default", "EV-OP-7"), {
             "contract_version": 2, "producer": "embervault.save-manager", "findings": [],
+        })
+        self.assertEqual(result.status, "blocked")
+
+    def test_mod_manager_failure_is_sanitized_read_only_diagnostic(self):
+        result = review_mod_manager_failure(ModuleContext("embervault.troubleshooter", "default", "EV-OP-MM-1"), {
+            "contract_version": 1, "producer": "embervault.mod-research", "failure": "interrupted",
+            "state": "review-required", "issues": ["update was interrupted"],
+            "recovery_evidence": {"mutation_performed": False}, "requires_control_center_approval": True,
+        })
+        self.assertEqual(result.status, "ready")
+        self.assertEqual(result.data["source_operation"], "synthetic-mod-update-recovery")
+        self.assertTrue(result.data["approval_required"])
+        self.assertFalse(result.data["mutates_workspace"])
+        self.assertEqual(result.data["findings"][0]["status"], "unverified")
+
+    def test_mod_manager_wrong_producer_is_blocked(self):
+        result = review_mod_manager_failure(ModuleContext("embervault.troubleshooter", "default", "EV-OP-MM-2"), {
+            "contract_version": 1, "producer": "unknown", "failure": "missing-file", "issues": [],
         })
         self.assertEqual(result.status, "blocked")
 
