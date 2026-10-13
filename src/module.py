@@ -83,6 +83,24 @@ def review_external_capability_matrix(context: ModuleContext, matrix: dict) -> M
     return ModuleResult("ready", "External capability matrix reviewed read-only.", data)
 
 
+def review_package_passport(context: ModuleContext, passport: dict) -> ModuleResult:
+    """Review a Mod Package Passport as sanitized diagnostics only."""
+    if not isinstance(passport, dict) or passport.get("passport_version") != 1:
+        return ModuleResult("blocked", "Package Passport requires version 1.")
+    required = ("id", "version", "builds", "targets", "files", "dependencies", "evidence")
+    issues = [key for key in required if key not in passport]
+    if passport.get("read_only") is not True or passport.get("runtime_approval") is not False:
+        issues.append("unsafe approval boundary")
+    findings = [{"id": f"passport-{key}", "title": f"Package Passport missing {key}",
+                 "severity": "critical", "status": "blocked", "message": "Passport metadata is incomplete."}
+                for key in issues]
+    result = scan(context, findings)
+    data = dict(result.data or {})
+    data.update({"source_operation": "mod-package-passport", "package_id": passport.get("id", "unknown"),
+                 "passport_state": "blocked" if issues else "review-required", "package_execution": False})
+    return ModuleResult("ready", "Package Passport reviewed read-only.", data)
+
+
 def export_report(result: ModuleResult) -> dict:
     """Create a sanitized, read-only report payload from a diagnostic result."""
     if not isinstance(result, ModuleResult) or result.status != "ready" or not isinstance(result.data, dict):

@@ -3,7 +3,7 @@ import unittest
 from embervault_sdk import ModuleContext
 from cryptography.fernet import Fernet
 from src.runtime import handle_history_request
-from src.module import EncryptedReportHistory, ReportHistory, build_review_view, check_module_health, check_package_health, compare_recovery_health, compare_reports, execute_history_action, export_report, recovery_health_trend, review_evidence_gaps, review_recovery_evidence, review_external_capability_matrix, review_mod_manager_failure, scan, scan_evidence
+from src.module import EncryptedReportHistory, ReportHistory, build_review_view, check_module_health, check_package_health, compare_recovery_health, compare_reports, execute_history_action, export_report, recovery_health_trend, review_evidence_gaps, review_recovery_evidence, review_external_capability_matrix, review_mod_manager_failure, review_package_passport, scan, scan_evidence
 import tempfile
 from pathlib import Path
 
@@ -94,6 +94,25 @@ class TroubleshooterTests(unittest.TestCase):
         result = review_external_capability_matrix(ModuleContext("embervault.troubleshooter", "default", "EV-OP-CAP-2"), {
             "schema_version": 1, "read_only": True, "runtime_approval": True, "capabilities": []})
         self.assertEqual(result.status, "blocked")
+
+    def test_package_passport_produces_read_only_diagnostics(self):
+        result = review_package_passport(ModuleContext("embervault.troubleshooter", "default", "EV-OP-PASS-1"), {
+            "passport_version": 1, "id": "sf.example", "version": "1.6.6", "builds": ["1076226"],
+            "targets": ["client"], "files": [], "dependencies": [], "evidence": [],
+            "read_only": True, "runtime_approval": False,
+        })
+        self.assertEqual(result.status, "ready")
+        self.assertEqual(result.data["source_operation"], "mod-package-passport")
+        self.assertEqual(result.data["package_id"], "sf.example")
+        self.assertFalse(result.data["package_execution"])
+        self.assertEqual(result.data["finding_count"], 0)
+
+    def test_incomplete_package_passport_is_reported(self):
+        result = review_package_passport(ModuleContext("embervault.troubleshooter", "default", "EV-OP-PASS-2"), {
+            "passport_version": 1, "id": "sf.example", "read_only": True, "runtime_approval": False})
+        self.assertEqual(result.status, "ready")
+        self.assertGreater(result.data["finding_count"], 0)
+        self.assertEqual(result.data["findings"][0]["status"], "blocked")
 
     def test_report_export_is_sanitized_and_read_only(self):
         result = scan(ModuleContext("embervault.troubleshooter", "default", "EV-OP-8"), [
