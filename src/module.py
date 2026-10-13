@@ -57,6 +57,32 @@ def review_mod_manager_failure(context: ModuleContext, evidence: dict) -> Module
     return ModuleResult("ready", "Mod Manager failure evidence reviewed read-only.", data)
 
 
+def review_external_capability_matrix(context: ModuleContext, matrix: dict) -> ModuleResult:
+    """Turn an external capability matrix into bounded compatibility findings."""
+    if not isinstance(matrix, dict) or matrix.get("schema_version") != 1:
+        return ModuleResult("blocked", "Capability matrix requires schema version 1.")
+    if matrix.get("read_only") is not True or matrix.get("runtime_approval") is not False:
+        return ModuleResult("blocked", "Capability matrix must be read-only and runtime-unapproved.")
+    capabilities = matrix.get("capabilities")
+    if not isinstance(capabilities, list):
+        return ModuleResult("blocked", "Capability matrix requires a capabilities list.")
+    findings = []
+    for capability in capabilities:
+        if not isinstance(capability, dict) or not capability.get("area"):
+            return ModuleResult("blocked", "Every capability matrix entry requires an area.")
+        state = str(capability.get("external_state", "unknown"))
+        if state != "proven":
+            findings.append({"id": f"external-capability-{capability['area']}",
+                             "title": f"External capability requires review: {capability['area']}",
+                             "severity": "attention", "status": "unverified",
+                             "message": str(capability.get("evidence_boundary", "External evidence is bounded."))})
+    result = scan(context, findings)
+    data = dict(result.data or {})
+    data.update({"source_operation": "external-capability-matrix", "source": matrix.get("source", "external"),
+                 "capability_count": len(capabilities), "review_required": bool(findings)})
+    return ModuleResult("ready", "External capability matrix reviewed read-only.", data)
+
+
 def export_report(result: ModuleResult) -> dict:
     """Create a sanitized, read-only report payload from a diagnostic result."""
     if not isinstance(result, ModuleResult) or result.status != "ready" or not isinstance(result.data, dict):

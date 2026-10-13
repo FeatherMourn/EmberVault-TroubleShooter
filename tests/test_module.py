@@ -3,7 +3,7 @@ import unittest
 from embervault_sdk import ModuleContext
 from cryptography.fernet import Fernet
 from src.runtime import handle_history_request
-from src.module import EncryptedReportHistory, ReportHistory, build_review_view, check_module_health, check_package_health, compare_recovery_health, compare_reports, execute_history_action, export_report, recovery_health_trend, review_evidence_gaps, review_recovery_evidence, review_mod_manager_failure, scan, scan_evidence
+from src.module import EncryptedReportHistory, ReportHistory, build_review_view, check_module_health, check_package_health, compare_recovery_health, compare_reports, execute_history_action, export_report, recovery_health_trend, review_evidence_gaps, review_recovery_evidence, review_external_capability_matrix, review_mod_manager_failure, scan, scan_evidence
 import tempfile
 from pathlib import Path
 
@@ -75,6 +75,24 @@ class TroubleshooterTests(unittest.TestCase):
         result = review_mod_manager_failure(ModuleContext("embervault.troubleshooter", "default", "EV-OP-MM-2"), {
             "contract_version": 1, "producer": "unknown", "failure": "missing-file", "issues": [],
         })
+        self.assertEqual(result.status, "blocked")
+
+    def test_external_capability_matrix_surfaces_beta_areas(self):
+        result = review_external_capability_matrix(ModuleContext("embervault.troubleshooter", "default", "EV-OP-CAP-1"), {
+            "schema_version": 1, "source": "external.shroudforge.1.6.6", "read_only": True, "runtime_approval": False,
+            "capabilities": [
+                {"area": "build-profiles", "external_state": "proven", "evidence_boundary": "External only."},
+                {"area": "runtime-hooks", "external_state": "beta", "evidence_boundary": "Runtime unverified."},
+            ],
+        })
+        self.assertEqual(result.status, "ready")
+        self.assertEqual(result.data["source_operation"], "external-capability-matrix")
+        self.assertTrue(result.data["review_required"])
+        self.assertEqual(result.data["findings"][0]["status"], "unverified")
+
+    def test_external_capability_matrix_rejects_runtime_approval(self):
+        result = review_external_capability_matrix(ModuleContext("embervault.troubleshooter", "default", "EV-OP-CAP-2"), {
+            "schema_version": 1, "read_only": True, "runtime_approval": True, "capabilities": []})
         self.assertEqual(result.status, "blocked")
 
     def test_report_export_is_sanitized_and_read_only(self):
